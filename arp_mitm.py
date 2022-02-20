@@ -21,7 +21,7 @@ cwd = os.getcwd()
 # It will stop the execution if user didn't use sudo. 
 def in_sudo_mode():
     """If the user doesn't run the program with super user privileges, don't allow them to continue."""
-    if not 'SUDO_UID' in os.environ.keys():
+    if 'SUDO_UID' not in os.environ.keys():
         print("Try running this program with sudo.")
         exit()
 
@@ -31,19 +31,12 @@ def arp_scan(ip_range):
        mobile devices. You can see the way scapy implemented the function here: https://github.com/secdev/scapy/blob/master/scapy/layers/l2.py#L726-L749
        Arguments: ip_range -> an example would be "10.0.0.0/24"
     """
-    # We create an empty list where we will store the pairs of ARP responses.
-    arp_responses = list()
     # We send arp packets through the network, verbose is set to 0 so it won't show any output.
     # scapy's arping function returns two lists. We're interested in the answered results which is at the 0 index.
     answered_lst = scapy.arping(ip_range, verbose=0)[0]
-    
-    # We loop through all the responses and add them to a dictionary and append them to the list arp_responses.
-    for res in answered_lst:
-        # Every response will look something lke like -> {"ip" : "10.0.0.4", "mac" : "00:00:00:00:00:00"}
-        arp_responses.append({"ip" : res[1].psrc, "mac" : res[1].hwsrc})
-    
+
     # We return the list of arp responses which contains dictionaries for every arp response.
-    return arp_responses
+    return [{"ip" : res[1].psrc, "mac" : res[1].hwsrc} for res in answered_lst]
 
 
 def is_gateway(gateway_ip):
@@ -52,23 +45,15 @@ def is_gateway(gateway_ip):
     """
     # We run the command route -n which returns information about the gateways.
     result = subprocess.run(["route", "-n"], capture_output=True).stdout.decode().split("\n")
-    # Loop through every row in the route -n command.
-    for row in result:
-        # We look to see if the gateway_ip is in the row, if it is we return True. If False program continues flow and returns False.
-        if gateway_ip in row:
-            return True
-    
-    return False
+    return any(gateway_ip in row for row in result)
 
 
 def get_interface_names():
     """The interface names of a networks are listed in the /sys/class/net folder in Kali. This function returns a list of interfaces in Kali."""
     # The interface names are directory names in the /sys/class/net folder. So we change the directory to go there.
     os.chdir("/sys/class/net")
-    # We use the listdir() function from the os module. Since we know there won't be files and only directories with the interface names we can save the output as the interface names.
-    interface_names = os.listdir()
     # We return the interface names which we will use to find out which one is the name of the gateway.
-    return interface_names
+    return os.listdir()
 
 
 def match_iface_name(row):
@@ -109,10 +94,7 @@ def clients(arp_res, gateway_res):
     # In the menu we only want to give you access to the clients whose arp tables you want to poison. The gateway needs to be removed.
     client_list = []
     for gateway in gateway_res:
-        for item in arp_res:
-            # All items which are not the gateway will be appended to the client_list.
-            if gateway["ip"] != item["ip"]:
-                client_list.append(item)
+        client_list.extend(item for item in arp_res if gateway["ip"] != item["ip"])
     # return the list with the clients which will be used for the menu.
     return client_list
 
@@ -194,19 +176,20 @@ def get_cmd_arguments():
     """ This function validates the command line arguments supplied on program start-up"""
     ip_range = None
     # Ensure that they supplied the correct command line arguments.
-    if len(sys.argv) - 1 > 0 and sys.argv[1] != "-ip_range":
-        print("-ip_range flag not specified.")
-        return ip_range
-    elif len(sys.argv) - 1 > 0 and sys.argv[1] == "-ip_range":
-        try:
-            # If IPv4Network(3rd paramater is not a valid ip range, then will kick you to the except block.)
-            print(f"{IPv4Network(sys.argv[2])}")
-            # If it is valid it will assign the ip_range from the 3rd parameter.
-            ip_range = sys.argv[2]
-            print("Valid ip range entered through command-line.")
-        except:
-            print("Invalid command-line argument supplied.")
-            
+    if len(sys.argv) > 1:
+        if sys.argv[1] != "-ip_range":
+            print("-ip_range flag not specified.")
+            return ip_range
+        else:
+            try:
+                # If IPv4Network(3rd paramater is not a valid ip range, then will kick you to the except block.)
+                print(f"{IPv4Network(sys.argv[2])}")
+                # If it is valid it will assign the ip_range from the 3rd parameter.
+                ip_range = sys.argv[2]
+                print("Valid ip range entered through command-line.")
+            except:
+                print("Invalid command-line argument supplied.")
+
     return ip_range
         
 
@@ -217,7 +200,7 @@ in_sudo_mode()
 ip_range = get_cmd_arguments()
 
 # If the ip range is not valid, it would've assigned a None value and the program will exit from here.
-if ip_range == None:
+if ip_range is None:
     print("No valid ip range specified. Exiting!")
     exit()
 

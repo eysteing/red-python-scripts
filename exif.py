@@ -34,7 +34,7 @@ def create_google_maps_url(gps_coords):
 def convert_decimal_degrees(degree, minutes, seconds, direction):
     decimal_degrees = degree + minutes / 60 + seconds / 3600
     # A value of "S" for South or West will be multiplied by -1
-    if direction == "S" or direction == "W":
+    if direction in ["S", "W"]:
         decimal_degrees *= -1
     return decimal_degrees
         
@@ -100,10 +100,9 @@ for file in files:
         print(f"_______________________________________________________________{file}_______________________________________________________________")
         # The ._getexif() method returns a dictionary. .items() method returns a list of all dictionary keys and values.
         gps_coords = {}
-        # We check if exif data are defined for the image. 
-        if image._getexif() == None:
+        # We check if exif data are defined for the image.
+        if image._getexif() is None:
             print(f"{file} contains no exif data.")
-        # If exif data are defined we can cycle through the tag, and value for the file.
         else:
             for tag, value in image._getexif().items():
                 # If you print the tag without running it through the TAGS.get() method you'll get numerical values for every tag. We want the tags in human-readable form. 

