@@ -30,7 +30,7 @@ print("##############################################################\n")
 mac_to_change_to = ["0A1122334455", "0E1122334455", "021122334455", "061122334455"]
 
 # We create an empty list where we'll store all the MAC addresses.
-mac_addresses = list()
+mac_addresses = []
 
 # We start off by creating a regular expression (regex) for MAC addresses.
 macAddRegex = re.compile(r"([A-Za-z0-9]{2}[:-]){5}([A-Za-z0-9]{2})")
@@ -64,7 +64,7 @@ for macAdd in getmac_output:
     # We use the regex to find the transport name.
     transportFind = transportName.search(macAdd)
     # If you don't find a Mac Address or Transport name the option won't be listed.
-    if macFind == None or transportFind == None:
+    if macFind is None or transportFind is None:
         continue
     # We append a tuple with the Mac Address and the Transport name to a list.
     mac_addresses.append((macFind.group(0),transportFind.group(0)))
@@ -101,7 +101,11 @@ with winreg.ConnectRegistry(None, winreg.HKEY_LOCAL_MACHINE) as hkey:
     # Create a list for the 21 folders. I used a list comprehension. The expression part of the list comprehension
     # makes use of a ternary operator. The transport value for you Mac Address should fall within this range. 
     # You could write multiple lines.
-    controller_key_folders = [("\\000" + str(item) if item < 10 else "\\00" + str(item)) for item in range(0, 21)]
+    controller_key_folders = [
+        f'\\000{str(item)}' if item < 10 else "\\00" + str(item)
+        for item in range(21)
+    ]
+
     # We now iterate through the list of folders we created.
     for key_folder in controller_key_folders:
         # We try to open the key. If we can't we just except and pass. But it shouldn't be a problem.
@@ -122,7 +126,7 @@ with winreg.ConnectRegistry(None, winreg.HKEY_LOCAL_MACHINE) as hkey:
                         # We unpack each individual winreg value into name, value and type.
                         name, value, type = winreg.EnumValue(regkey, count)
                         # To go to the next value if we didn't find what we're looking for we increment count.
-                        count = count + 1
+                        count += 1
                         # We check to see if our "NetCfgInstanceId" is equal to our Transport number for our 
                         # selected Mac Address.
                         if name == "NetCfgInstanceId" and value == mac_addresses[int(option)][1]:
@@ -140,11 +144,7 @@ with winreg.ConnectRegistry(None, winreg.HKEY_LOCAL_MACHINE) as hkey:
 # Code to disable and enable Wireless devicess
 run_disable_enable = input("Do you want to disable and reenable your wireless device(s). Press Y or y to continue:")
 # Changes the input to lowercase and compares to y. If not y the while function which contains the last part will never run.
-if run_disable_enable.lower() == 'y':
-    run_last_part = True
-else:
-    run_last_part = False
-
+run_last_part = run_disable_enable.lower() == 'y'
 # run_last_part will be set to True or False based on above code.
 while run_last_part:
 
@@ -161,7 +161,19 @@ while run_last_part:
             if(disable.returncode == 0):
                 print(f"Disabled {adapter.lstrip()}")
             # We now enable the network adapter again.
-            enable = subprocess.run(["wmic", "path", f"win32_networkadapter", "where", f"index={adapter_index_find.group(0)}", "call", "enable"],capture_output=True)
+            enable = subprocess.run(
+                [
+                    "wmic",
+                    "path",
+                    'win32_networkadapter',
+                    "where",
+                    f"index={adapter_index_find.group(0)}",
+                    "call",
+                    "enable",
+                ],
+                capture_output=True,
+            )
+
             # If the return code is 0, it means that we successfully enabled the adapter
             if (enable.returncode == 0):
                 print(f"Enabled {adapter.lstrip()}")
